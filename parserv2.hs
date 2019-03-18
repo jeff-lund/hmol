@@ -118,3 +118,6 @@ smilesP = do b <- optionMaybe bondP
              case p of
                Nothing -> pure (Node (Atom' (a, b, r)) c)
                Just p' -> pure (Node (Atom' (a, b, r)) (p' ++ c))
+
+
+acidTree = parseG smilesP aceticAcid
