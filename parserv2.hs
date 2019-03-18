@@ -35,28 +35,36 @@ instance Show Atom where
     show (Aliphatic atom) = show atom
     show (Aromatic atom)  = map toLower (show atom)
 
-data BondType = Single | Double | Triple | Quadruple | Arom
-            deriving (Show, Eq, Enum, Read)
+data BondType = Single
+              | Double
+              | Triple
+              | Quadruple
+              | Arom
+              | RingBond (BondType, Ring)
+            deriving (Show, Eq)
+
+newtype Ring = Ring Int
+    deriving (Show, Eq, Read)
+
+{- instance Show Ring where
+    show Ring (Nothing, i)  = show i
+    show Ring ((Just b), i) = (show b) ++ " " ++ (show i) -}
 
 bondDict b | (b == '-') = Single
            | (b == '=') = Double
            | (b == '#') = Triple
            | (b == '$') = Quadruple
 
-data Chain = Bond BondType
-           | Atom Atom
-           | RingBond (Maybe BondType) Int
-            deriving (Eq, Read)
--- Comment this out and derive show above for old school dot graphs
+newtype Chain = Atom' (Atom, (Maybe BondType), (Maybe Ring))
+
 instance Show Chain where
-    show (Bond b) = show b
-    show (Atom a) = show a
-    show (RingBond b n) = case b of
-                              Nothing -> "Ring " ++ show n
-                              Just b' -> (show b') ++ " | Ring " ++ (show n)
+  show (Atom' (a, Nothing, Nothing)) = show a
+  show (Atom' (a, Just b, Nothing))  = (show b) ++ ", " ++ (show a)
+  show (Atom' (a, Nothing, Just r))  = (show a) ++ ", " ++ (show r)
+  show (Atom' (a, Just b, Just r))   = (show b) ++ ", " ++ (show a) ++ ", " ++ (show r)
 
 data SMILESTree a = Node a [SMILESTree a]
-            deriving (Show)
+  deriving (Show)
 
 -- Treedot defs
 instance LabeledTree (SMILESTree Chain)
@@ -68,32 +76,32 @@ bonds     = "-=#$"
 atoms     = map show [B ..]
 aromatics = concat [map toLower x | x <- (map show [B, C, N, O, S, P])]
 
-twoAliphaticP :: Parser Chain
-twoAliphaticP = do u <- upper
-                   l <- oneOf "rl"
-                   return (Atom (Aliphatic (read [u,l]::AtomSymbol)))
+twoAliphaticP :: Parser Atom
+twoAliphaticP =  do u <- upper
+                    l <- oneOf "rl"
+                    return (Aliphatic (read [u,l]::AtomSymbol))
 
-oneAliphaticP :: Parser Chain
-oneAliphaticP = do u <- upper
-                   return (Atom (Aliphatic (read [u]::AtomSymbol)))
+oneAliphaticP :: Parser Atom
+oneAliphaticP =  do u <- upper
+                    return (Aliphatic (read [u]::AtomSymbol))
 
-aromaticP :: Parser Chain
-aromaticP = do a <- oneOf aromatics
-               return (Atom (Aromatic (read [toUpper a]::AtomSymbol)))
+aromaticP :: Parser Atom
+aromaticP =  do a <- oneOf aromatics
+                return (Aromatic (read [toUpper a]::AtomSymbol))
 
-atomP :: Parser Chain
-atomP = try twoAliphaticP <|> oneAliphaticP <|> aromaticP
+atomP :: Parser Atom
+atomP = try twoAliphaticP <|> try oneAliphaticP <|> aromaticP
 
-bondP :: Parser Chain
+bondP :: Parser BondType
 bondP = do b <- oneOf bonds
            d <- optionMaybe (many1 digit)
            case d of
-             Nothing -> return (Bond (bondDict b))
-             Just d' -> return (RingBond (Just (bondDict b)) (read $ concat d::Int))
+             Nothing -> return (bondDict b)
+             Just d' -> return (RingBond (bondDict b, Ring (read $ concat d::Int)))
 
-ringP :: Parser Chain
+ringP :: Parser Ring
 ringP = do d <- (many1 digit)
-           return (RingBond Nothing (read d::Int))
+           return (Ring (read d::Int))
 
 parenP :: Parser (SMILESTree Chain)
 parenP = do char '('
@@ -102,9 +110,11 @@ parenP = do char '('
             return r
 
 smilesP :: Parser (SMILESTree Chain)
-smilesP = do a <- try atomP <|> try ringP <|> bondP
+smilesP = do b <- optionMaybe bondP
+             a <- atomP
+             r <- optionMaybe ringP
              p <- optionMaybe (many parenP)
-             r <- many smilesP
+             c <- many smilesP
              case p of
-               Nothing -> pure (Node a r)
-               Just p' -> pure (Node a (p' ++ r))
+               Nothing -> pure (Node (Atom' (a, b, r)) c)
+               Just p' -> pure (Node (Atom' (a, b, r)) (p' ++ c))
