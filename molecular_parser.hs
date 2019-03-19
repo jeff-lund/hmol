@@ -6,21 +6,19 @@ import Data.Array
 bondDict n | n > 1 = ["=#$" !! (n - 2)]
            | otherwise = ""
 
---aceticAcid :: ([[Int]], [Atom])
 aceticAcid = ([[0, 1, 2, 1],
                [1, 0, 0, 0],
                [2, 0, 0, 0],
-               [1, 0, 0, 0]], "CCOO")
+               [1, 0, 0, 0]], ["C", "C", "O", "O"])
 
 aceticAcidSMILES = "CC(O)=O"
 
---cyclicMol :: ([[Int]], [Atom])
 cyclicMol = ([[0, 1, 0, 0, 1, 0],
               [1, 0, 1, 0, 0, 0],
               [0, 1, 0, 1, 0, 0],
               [0, 0, 1, 0, 1, 0],
               [1, 0, 0, 1, 0, 1],
-              [0, 0, 0, 0, 1, 0]] , "CCCNCO")
+              [0, 0, 0, 0, 1, 0]] , ["C", "C", "C", "N", "C", "O"])
 
 cmEL = adjToEdges (fst cyclicMol)
 aaEL = adjToEdges (fst aceticAcid)
@@ -78,7 +76,7 @@ contents i (a:as) | i == fst a    = snd a
 
 makeSmiles mol = smilesify mol 0
 
-smilesify mol n = [key !! n] ++ ringChk n cyc bc ++ smileMore n (contents n al) mol
+smilesify mol n = key !! n ++ ringChk n cyc bc ++ smileMore n (contents n al) mol
       where key = snd mol
             el = adjToEdges (fst mol)
             el' = simpleEdgeList el
@@ -107,3 +105,16 @@ ringChk n cyc bc | elem n v  = concat
                               (i, e) <- zip [0..] cyc, n == fst e || n == snd e]
                  | otherwise = ""
                  where v = nub (map fst cyc ++ map snd cyc)
+
+match 0 (x:xs) = x
+match n (x:xs) = match (n-1) xs
+
+{-
+huckels :: [[Char]] -> Bool
+huckels "" = False
+huckels cs = huckelCount cs
+
+huckelCount [] = 0
+huckelCount (c:cs) | any zeroes = 0
+                   | any c twos = 1
+-}
