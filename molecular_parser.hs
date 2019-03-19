@@ -123,15 +123,17 @@ ringChk n cyc bc | elem n v  = concat
                  | otherwise = ""
                  where v = nub (map fst cyc ++ map snd cyc)
 
-match 0 (x:xs) = x
-match n (x:xs) = match (n-1) xs
+--huckels :: Num a => [String] -> [(a, a)] -> Bool
+huckels key [] bc = False
+huckels key cs bc = (length [i | i <- [1..c], 4 * i + 2 == c]) > 1
+    where c = huckelAtomCount key cs + huckelBondCount bc
 
-{-
-huckels :: [[Char]] -> Bool
-huckels "" = False
-huckels cs = huckelCount cs
+huckelAtomCount [] key = 0
+huckelAtomCount (c:cs) key | elem (key !! c) ["O", "N", "S"]  = 1 + huckelAtomCount cs key
+                           | otherwise                        = 0 + huckelAtomCount cs key
 
-huckelCount [] = 0
-huckelCount (c:cs) | any zeroes = 0
-                   | any c twos = 1
--}
+huckelBondCount [] = 0
+huckelBondCount (b:bs) | b == "="  = 1 + huckelBondCount bs
+                       | b == "#"  = 2 + huckelBondCount bs
+                       | b == "$"  = 3 + huckelBondCount bs
+                       | otherwise = 0
