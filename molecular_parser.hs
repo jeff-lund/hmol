@@ -3,8 +3,9 @@ import Data.List
 import Data.Array
 
 
-bondDict n | n > 1 = "+#$" !! (n - 1)
+bondDict n | n > 1 = ["=#$" !! (n - 2)]
            | otherwise = ""
+
 --aceticAcid :: ([[Int]], [Atom])
 aceticAcid = ([[0, 1, 2, 1],
                [1, 0, 0, 0],
@@ -75,21 +76,34 @@ contents i []     = []
 contents i (a:as) | i == fst a    = snd a
                   | otherwise = contents i as
 
-smilesify mol n = key !! n ++ ringChk n cyc bc ++ smileMore (contents n al)
+makeSmiles mol = smilesify mol 0
+
+smilesify mol n = [key !! n] ++ ringChk n cyc bc ++ smileMore n (contents n al) mol
       where key = snd mol
             el = adjToEdges (fst mol)
-            al = edgeListToAdjList el
+            el' = simpleEdgeList el
+            p = prims el
+            al = edgeListToAdjList p
             bc  = bondCount el
             cyc = cyclicEdges el
             m = length key
 
-bondChk         :: (Int, Int) -> [(Int, Int)] -> [Char]
-bondChk e []     = ""
-bondChk e (b:bs) | e == snd b = bondDict fst b
-                 | ringBnd e bs
+smileMore p [] mol     = ""
+smileMore p (v:vs) mol | null vs   = bondChk (p, v) bc ++ smilesify mol v
+                       | otherwise =  "(" ++ bondChk (p, v) bc ++ smilesify mol v ++ ")" ++ smileMore p vs mol
+                        where el = adjToEdges (fst mol)
+                              bc  = bondCount el
+                              cyc = cyclicEdges el
 
-ringChk                     :: Int -> [(Int, Int)] -> [Char]
+--bondChk :: (Int, Int) -> [(Int, (Int, Int))] -> [Char]
+bondChk e []                  = ""
+bondChk e (b:bs) | e == snd b = bondDict (fst b)
+                 | otherwise  = bondChk e bs
+
+--ringChk :: Int -> [(Int, Int)] -> [(Int, (Int, Int))] -> [Char]
 ringChk n [] _               = ""
-ringChk n cyc bc | elem n v  = concat [show i ++ bondChk e bc | (i, e) <- zip [0..] cyc, n == fst e || n == snd e]
+ringChk n cyc bc | elem n v  = concat
+                              [show i ++ bondChk e bc |
+                              (i, e) <- zip [0..] cyc, n == fst e || n == snd e]
                  | otherwise = ""
                  where v = nub (map fst cyc ++ map snd cyc)
