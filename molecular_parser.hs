@@ -1,5 +1,6 @@
 import Data.List
 import Data.Array
+import Data.Char
 
 bondDict n | n > 1 = ["=#$" !! (n - 2)]
            | otherwise = ""
@@ -17,6 +18,13 @@ cyclicMol = ([[0, 1, 0, 0, 1, 0],
               [0, 0, 1, 0, 1, 0],
               [1, 0, 0, 1, 0, 1],
               [0, 0, 0, 0, 1, 0]] , ["C", "C", "C", "N", "C", "O"])
+
+benzene = ([[0,2,0,0,0,1],
+            [2,0,1,0,0,0],
+            [0,1,0,2,0,0],
+            [0,0,2,0,1,0],
+            [0,0,0,1,0,2],
+            [2,0,0,0,1,0]], ["C", "C", "C", "C", "C", "C"])
 
 cmEL = adjToEdges (fst cyclicMol)
 aaEL = adjToEdges (fst aceticAcid)
@@ -39,7 +47,6 @@ multiEdge 0 e = []
 multiEdge n e =  e:(multiEdge (n-1) e)
 
 -- build up a minmum spanning tree
---prims :: [(Int, Int)] -> [(Int, Int)]
 prims [] = []
 prims el = sort $ prims' m [0] [] el
       where m = maximum $ concat [[fst x, snd x] | x <- el]
@@ -61,7 +68,7 @@ bondCount el = [countBond e el | e <- p]
       where p = prims el
 
 countBond e el = (c, e)
-      where c = genericLength [e' | e' <- el, e' == e]
+      where c = genericLength (filter (== e) el)
 
 contents i []                  = []
 contents i (a:as) | i == fst a = snd a
@@ -89,9 +96,7 @@ findSmallestCycle cv end ce el = concat [continueCycle cv' end ce' el' |
 continueCycle cv end ce el | elem end cv = [ce]
                            | otherwise   = findSmallestCycle cv end ce el
 
-removeEdge e [] = []
-removeEdge e' (e:es) = if e == e' then es else e : removeEdge e' es
-
+removeEdge e el = filter (/= e) el
 
 -- Graph to String Driver Functions
 makeSMILES mol = smilesify mol 0
@@ -103,11 +108,12 @@ smilesify mol n = key !! n ++ ringChk n cyc bc ++ smileMore n (contents n al) mo
             p = prims el
             al = edgeListToAdjList p
             bc  = bondCount el
-            cyc = cyclicEdges el
+            cyc = cyclicEdges el'
 
 smileMore p [] mol     = ""
 smileMore p (v:vs) mol | null vs   = bondChk (p, v) bc ++ smilesify mol v
-                       | otherwise =  "(" ++ bondChk (p, v) bc ++ smilesify mol v ++ ")" ++ smileMore p vs mol
+                       | otherwise = "(" ++ bondChk (p, v) bc ++ smilesify mol v ++ ")"
+                                     ++ smileMore p vs mol
                         where el = adjToEdges (fst mol)
                               bc  = bondCount el
                               cyc = cyclicEdges el
@@ -121,19 +127,36 @@ ringChk n cyc bc | elem n v  = concat
                               [show i ++ bondChk e bc |
                               (i, e) <- zip [0..] cyc, n == fst e || n == snd e]
                  | otherwise = ""
-                 where v = nub (map fst cyc ++ map snd cyc)
+                 where v = mergeTupleList cyc
+--                 where v = nub (map fst cyc ++ map snd cyc)
 
---huckels :: Num a => [String] -> [(a, a)] -> Bool
+convertAromatics (am, key) = [if elem i arm
+                              then (map toLower k)
+                              else k | (i, k) <- zip [0..] key]
+                              where el  = adjToEdges am
+                                    el' = simpleEdgeList el
+                                    cyc = cyclicEdges el'
+                                    bc  = bondCount el
+                                    arm = [aromatics c bc key | c <- cyc]
+
+aromatics c bc key = if h then mergeTupleList c else []
+                      where b = filter (elem c) bc
+                            h = huckels c b key
+
 huckels key [] bc = False
-huckels key cs bc = (length [i | i <- [1..c], 4 * i + 2 == c]) > 1
-    where c = huckelAtomCount key cs + huckelBondCount bc
+huckels key cs bc = (genericLength [i | i <- [1..c], 4 * i + 2 == c]) >= 1
+    where c = 1 + huckelAtomCount key cs + huckelBondCount bc
 
 huckelAtomCount [] key = 0
 huckelAtomCount (c:cs) key | elem (key !! c) ["O", "N", "S"]  = 1 + huckelAtomCount cs key
                            | otherwise                        = 0 + huckelAtomCount cs key
 
 huckelBondCount [] = 0
-huckelBondCount (b:bs) | b == "="  = 1 + huckelBondCount bs
-                       | b == "#"  = 2 + huckelBondCount bs
-                       | b == "$"  = 3 + huckelBondCount bs
+huckelBondCount (b:bs) | fst b == 2  = 1 + huckelBondCount bs
+                       | fst b == 3  = 2 + huckelBondCount bs
+                       | fst b == 4  = 2 + huckelBondCount bs
                        | otherwise = 0
+
+mergeTupleList xs      = nub $ mergeTupleList' xs
+mergeTupleList' []     = []
+mergeTupleList' (x:xs) = (fst x):(snd x):(mergeTupleList xs)
