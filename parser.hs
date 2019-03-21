@@ -25,6 +25,7 @@ parseG rule text = extract $ parse rule "(source)" text
 extract e = case e of Right e' -> e'
                       Left err -> error "Failed Parse"
 -- organic subset
+
 data AtomSymbol = B | C | N | O | S | P | F | Cl | Br | I
                   deriving (Show, Eq, Enum, Read)
 
@@ -35,18 +36,13 @@ instance Show Atom where
     show (Aliphatic atom) = show atom
     show (Aromatic atom)  = map toLower (show atom)
 
-data BondType = Single | Double | Triple | Quadruple | Arom
-            deriving (Show, Eq, Enum, Read)
-
-bondDict b | (b == '-') = Single
-           | (b == '=') = Double
-           | (b == '#') = Triple
-           | (b == '$') = Quadruple
+data BondType = Single | Double | Triple | Quadruple
+            deriving Show
 
 data Chain = Bond BondType
            | Atom Atom
            | RingBond (Maybe BondType) Int
-            deriving (Eq, Read)
+
 -- Comment this out and derive show above for old school dot graphs
 instance Show Chain where
     show (Bond b) = show b
@@ -64,9 +60,19 @@ instance LabeledTree (SMILESTree Chain)
 instance Tree (SMILESTree Chain)
     where subtrees (Node _ as) = as
 
+
+bondDict b | (b == '-') = Single
+           | (b == '=') = Double
+           | (b == '#') = Triple
+           | (b == '$') = Quadruple
+
 bonds     = "-=#$"
 atoms     = map show [B ..]
 aromatics = concat [map toLower x | x <- (map show [B, C, N, O, S, P])]
+
+
+atomP :: Parser Chain
+atomP = try twoAliphaticP <|> try oneAliphaticP <|> aromaticP
 
 twoAliphaticP :: Parser Chain
 twoAliphaticP = do u <- upper
@@ -80,9 +86,6 @@ oneAliphaticP = do u <- upper
 aromaticP :: Parser Chain
 aromaticP = do a <- oneOf aromatics
                return (Atom (Aromatic (read [toUpper a]::AtomSymbol)))
-
-atomP :: Parser Chain
-atomP = try twoAliphaticP <|> oneAliphaticP <|> aromaticP
 
 bondP :: Parser Chain
 bondP = do b <- oneOf bonds

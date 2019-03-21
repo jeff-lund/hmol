@@ -39,7 +39,6 @@ data BondType = Single
               | Double
               | Triple
               | Quadruple
-              | Arom
               | RingBond (BondType, Ring)
             deriving (Show, Eq)
 
@@ -50,10 +49,7 @@ newtype Ring = Ring Int
     show Ring (Nothing, i)  = show i
     show Ring ((Just b), i) = (show b) ++ " " ++ (show i) -}
 
-bondDict b | (b == '-') = Single
-           | (b == '=') = Double
-           | (b == '#') = Triple
-           | (b == '$') = Quadruple
+
 
 newtype Chain = Atom' (Atom, (Maybe BondType), (Maybe Ring))
 
@@ -66,15 +62,19 @@ instance Show Chain where
 data SMILESTree a = Node a [SMILESTree a]
   deriving (Show)
 
--- Treedot defs
 instance LabeledTree (SMILESTree Chain)
     where label (Node x _) = (show x)
+
 instance Tree (SMILESTree Chain)
     where subtrees (Node _ as) = as
 
 bonds     = "-=#$"
 atoms     = map show [B ..]
 aromatics = concat [map toLower x | x <- (map show [B, C, N, O, S, P])]
+bondDict b | (b == '-') = Single
+           | (b == '=') = Double
+           | (b == '#') = Triple
+           | (b == '$') = Quadruple
 
 twoAliphaticP :: Parser Atom
 twoAliphaticP =  do u <- upper
