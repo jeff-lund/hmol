@@ -137,15 +137,12 @@ convertAromatics (am, key) = [if elem i arm
                                     cyc = cyclicEdges el'
                                     bc  = bondCount el
                                     arm = [aromatics c bc key | c <- cyc]
-
-aromatics c bc key = if h then mergeTupleList c else []
-                      where b = filter (elem c) bc
-                            h = huckels c b key
+aromatics :: (Integer, Integer) -> [(Integer, (Integer, Integer))] -> [String] -> Int
+aromatics c bc key = 0
 
 huckels key [] bc = False
 huckels key cs bc = (genericLength [i | i <- [1..c], 4 * i + 2 == c]) >= 1
-    where c = 1 + ls
-    huckelAtomCount key cs + huckelBondCount bc
+    where c = 1 + huckelAtomCount key cs + huckelBondCount bc
 
 huckelAtomCount [] key = 0
 huckelAtomCount (c:cs) key | elem (key !! c) ["O", "N", "S"]  = 1 + huckelAtomCount cs key
