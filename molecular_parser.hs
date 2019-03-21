@@ -47,12 +47,12 @@ multiEdge 0 e = []
 multiEdge n e =  e:(multiEdge (n-1) e)
 
 -- build up a minmum spanning tree
-prims [] = []
-prims el = sort $ prims' m [0] [] el
+spanningTree [] = []
+spanningTree el = sort $ spanningTree' m [0] [] el
       where m = maximum $ concat [[fst x, snd x] | x <- el]
 
-prims' m ns es el | genericLength ns == m + 1 = es
-                  | otherwise = prims' m ((fst e):ns) ((snd e):es) el
+spanningTree' m ns es el | genericLength ns == m + 1 = es
+                  | otherwise = spanningTree' m ((fst e):ns) ((snd e):es) el
                       where e = findEdge ns el
 
 --findEdgePrim      :: [Int] -> [(Int, Int)] -> (Int, (Int, Int))
@@ -62,10 +62,10 @@ findEdge ns (e:es) | (elem (fst e) ns) && (notElem (snd e) ns) = ((snd e), e)
                    | otherwise = findEdge ns es
 
 cyclicEdges el = [e | e <- el, notElem e p]
-      where p = prims el
+      where p = spanningTree el
 
 bondCount el = [countBond e el | e <- p]
-      where p = prims el
+      where p = spanningTree el
 
 countBond e el = (c, e)
       where c = genericLength (filter (== e) el)
@@ -105,7 +105,7 @@ smilesify mol n = key !! n ++ ringChk n cyc bc ++ smileMore n (contents n al) mo
       where key = snd mol
             el = adjToEdges (fst mol)
             el' = simpleEdgeList el
-            p = prims el
+            p = spanningTree el
             al = edgeListToAdjList p
             bc  = bondCount el
             cyc = cyclicEdges el'
@@ -128,7 +128,6 @@ ringChk n cyc bc | elem n v  = concat
                               (i, e) <- zip [0..] cyc, n == fst e || n == snd e]
                  | otherwise = ""
                  where v = mergeTupleList cyc
---                 where v = nub (map fst cyc ++ map snd cyc)
 
 convertAromatics (am, key) = [if elem i arm
                               then (map toLower k)
