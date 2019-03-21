@@ -145,7 +145,8 @@ aromatics c bc key = if h then mergeTupleList c else []
 
 huckels key [] bc = False
 huckels key cs bc = (genericLength [i | i <- [1..c], 4 * i + 2 == c]) >= 1
-    where c = 1 + huckelAtomCount key cs + huckelBondCount bc
+    where c = 1 + ls
+    huckelAtomCount key cs + huckelBondCount bc
 
 huckelAtomCount [] key = 0
 huckelAtomCount (c:cs) key | elem (key !! c) ["O", "N", "S"]  = 1 + huckelAtomCount cs key
